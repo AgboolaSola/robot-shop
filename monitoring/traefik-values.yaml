@@ -1,0 +1,14 @@
+# Traefik is the front door for Robot Shop. It counts every request,
+# its status code and how long it took, and shares that with Prometheus.
+service:
+  spec:
+    type: ClusterIP          # kind has no cloud load balancer, so we use port-forward
+
+metrics:
+  prometheus:
+    addRoutersLabels: true   # label each number by route (web, catalogue, cart, payment)
+    addServicesLabels: true
+    service:
+      enabled: true          # a small service that serves Traefik's numbers
+    serviceMonitor:
+      enabled: true          # tells Prometheus where to collect them
