@@ -1,0 +1,25 @@
+prometheus:
+  prometheusSpec:
+    # Also pick up metrics targets from other Helm releases (Traefik, later)
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    retention: 2d
+
+grafana:
+  # Admin login comes from a Kubernetes Secret, not from this file
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+
+# kind runs these parts of Kubernetes in a way Prometheus can't reach,
+# so turn them off to avoid false "target down" alerts
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
