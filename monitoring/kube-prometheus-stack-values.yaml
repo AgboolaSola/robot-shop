@@ -1,6 +1,6 @@
 prometheus:
   prometheusSpec:
-    # Also pick up metrics targets from other Helm releases (Traefik, later)
+    # Also pick up metrics targets from other Helm releases (Traefik)
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
@@ -12,6 +12,13 @@ grafana:
     existingSecret: grafana-admin
     userKey: admin-user
     passwordKey: admin-password
+  # Logs: let Grafana search Loki (Capstone 2 step 3)
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      url: http://loki.logging.svc.cluster.local:3100
+      access: proxy
 
 # kind runs these parts of Kubernetes in a way Prometheus can't reach,
 # so turn them off to avoid false "target down" alerts

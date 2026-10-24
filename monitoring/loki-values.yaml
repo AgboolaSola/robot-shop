@@ -1,0 +1,49 @@
+# Loki stores the logs. One small "single binary" copy is enough for a laptop.
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false            # only one user (us), so no tenant IDs needed
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem             # keep logs on a local disk, no S3 needed
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    discover_log_levels: true    # tag each line with its level (info, warn, error)
+
+singleBinary:
+  replicas: 1
+  persistence:
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+# Turn off the parts meant for big clusters, to save memory
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+gateway:
+  enabled: false
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false
