@@ -1,0 +1,371 @@
+# Grafana dashboard for Robot Shop: requests, errors and latency (Capstone 2, step 2).
+# Grafana's sidecar loads any ConfigMap with the label grafana_dashboard: "1".
+# Numbers come from Traefik, which measures every request into the shop.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: robot-shop-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+data:
+  robot-shop-red.json: |
+    {
+      "uid": "robot-shop-red",
+      "title": "Robot Shop: requests, errors, latency",
+      "tags": [
+        "robot-shop",
+        "capstone-2"
+      ],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "editable": true,
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Requests per second",
+          "description": "All requests coming into Robot Shop through Traefik.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(rate(traefik_router_requests_total{router=~\"robot-shop-.*\"}[2m]))",
+              "legendFormat": "",
+              "refId": "A",
+              "range": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "value"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Error rate (5xx)",
+          "description": "Share of requests that failed with a server error (5xx).",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 8,
+            "y": 0,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "100 * (sum(rate(traefik_router_requests_total{router=~\"robot-shop-.*\",code=~\"5..\"}[2m])) or vector(0)) / sum(rate(traefik_router_requests_total{router=~\"robot-shop-.*\"}[2m]))",
+              "legendFormat": "",
+              "refId": "A",
+              "range": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "value"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Latency p95",
+          "description": "95% of requests finished faster than this.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 16,
+            "y": 0,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(traefik_router_request_duration_seconds_bucket{router=~\"robot-shop-.*\"}[2m])))",
+              "legendFormat": "",
+              "refId": "A",
+              "range": true
+            }
+          ],
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "value"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "decimals": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 0.5
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Requests per second by route",
+          "description": "Traffic for web, catalogue, cart and payment.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 5,
+            "w": 24,
+            "h": 9
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (route) (label_replace(label_replace(rate(traefik_router_requests_total{router=~\"robot-shop-.*\"}[2m]), \"route\", \"$1\", \"router\", \"robot-shop-robot-shop-api-(.*)@kubernetes\"), \"route\", \"web\", \"router\", \"robot-shop-robot-shop@kubernetes\"))",
+              "legendFormat": "{{route}}",
+              "refId": "A",
+              "range": true
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Error rate (5xx) by route",
+          "description": "Note: load-gen sends some broken orders to payment on purpose (ERROR=1).",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 14,
+            "w": 12,
+            "h": 9
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "100 * (sum by (route) (label_replace(label_replace(rate(traefik_router_requests_total{router=~\"robot-shop-.*\",code=~\"5..\"}[2m]), \"route\", \"$1\", \"router\", \"robot-shop-robot-shop-api-(.*)@kubernetes\"), \"route\", \"web\", \"router\", \"robot-shop-robot-shop@kubernetes\")) or (0 * sum by (route) (label_replace(label_replace(rate(traefik_router_requests_total{router=~\"robot-shop-.*\"}[2m]), \"route\", \"$1\", \"router\", \"robot-shop-robot-shop-api-(.*)@kubernetes\"), \"route\", \"web\", \"router\", \"robot-shop-robot-shop@kubernetes\")))) / sum by (route) (label_replace(label_replace(rate(traefik_router_requests_total{router=~\"robot-shop-.*\"}[2m]), \"route\", \"$1\", \"router\", \"robot-shop-robot-shop-api-(.*)@kubernetes\"), \"route\", \"web\", \"router\", \"robot-shop-robot-shop@kubernetes\"))",
+              "legendFormat": "{{route}}",
+              "refId": "A",
+              "range": true
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10
+              }
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Latency p95 by route",
+          "description": "95th percentile response time per route.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 14,
+            "w": 12,
+            "h": 9
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "histogram_quantile(0.95, sum by (route, le) (label_replace(label_replace(rate(traefik_router_request_duration_seconds_bucket{router=~\"robot-shop-.*\"}[2m]), \"route\", \"$1\", \"router\", \"robot-shop-robot-shop-api-(.*)@kubernetes\"), \"route\", \"web\", \"router\", \"robot-shop-robot-shop@kubernetes\")))",
+              "legendFormat": "{{route}}",
+              "refId": "A",
+              "range": true
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "custom": {
+                "lineWidth": 2,
+                "fillOpacity": 10
+              }
+            },
+            "overrides": []
+          }
+        }
+      ]
+    }
