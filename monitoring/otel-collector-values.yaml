@@ -1,0 +1,42 @@
+# The OpenTelemetry Collector receives traces from shipping and sends them on to Jaeger.
+mode: deployment
+fullnameOverride: otel-collector
+
+image:
+  repository: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-k8s
+command:
+  name: otelcol-k8s
+
+# Only OTLP traces are needed, so switch off the other receivers
+ports:
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+
+config:
+  receivers:
+    jaeger: null
+    prometheus: null
+    zipkin: null
+  exporters:
+    otlp_grpc:
+      endpoint: jaeger.tracing.svc.cluster.local:4317
+      tls:
+        insecure: true   # plain connection, inside the cluster only
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlp_grpc]
+      metrics: null
+      logs: null
+
+resources:
+  limits:
+    memory: 256Mi
