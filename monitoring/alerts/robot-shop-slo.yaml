@@ -1,0 +1,31 @@
+# Robot Shop availability SLO: 99% of requests succeed over 30 days.
+# SLI is measured at Traefik: requests that did NOT return a 5xx error.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: robot-shop-slo
+  namespace: monitoring
+spec:
+  groups:
+    - name: robot-shop-availability
+      rules:
+        # The SLI, worked out every 5 minutes and saved under a short name
+        - record: robotshop:availability:ratio_rate5m
+          expr: |
+            1 - (
+              (sum(rate(traefik_router_requests_total{router=~"robot-shop-.*",code=~"5.."}[5m])) or vector(0))
+              /
+              sum(rate(traefik_router_requests_total{router=~"robot-shop-.*"}[5m]))
+            )
+        # Page when more than 5% of requests fail for 2 minutes:
+        # that burns the 1% error budget 5x faster than allowed
+        - alert: RobotShopAvailabilityLow
+          expr: robotshop:availability:ratio_rate5m < 0.95
+          for: 2m
+          labels:
+            severity: critical
+            team: robot-shop
+          annotations:
+            summary: "Robot Shop availability is {{ $value | humanizePercentage }} (SLO is 99%)"
+            description: "More than 5% of requests failed over the last 5 minutes. The error budget is burning 5x too fast."
+            runbook_url: "https://github.com/AgboolaSola/robot-shop/blob/master/docs/runbook.md"
